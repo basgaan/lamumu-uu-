@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kurban Bayramı Macerası</title>
+    <!-- Tailwind CSS CDN, sadece modern arayüz öğeleri için kullanılmıştır -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0b1c;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 90%; /* Oyun alanı genişletildi */
+            max-width: 1200px; /* Maksimum genişlik artırıldı */
+            text-align: center;
+        }
+
+        #game-area {
+            background: #0d1628;
+            border: 4px solid #4a90e2;
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            height: 100%;
+            cursor: none; /* Fare imlecini gizle */
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 16px;
+            z-index: 10;
+            transition: opacity 0.5s ease;
+        }
+
+        #ui-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #1a2a40;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2rem;
+            color: #e0e0e0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .info-item .icon {
+            font-size: 1.5rem;
+        }
+
+        .info-item span {
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Oyun alanı -->
+        <canvas id="game-area"></canvas>
+        
+        <!-- Oyun durumu, skor, vb. için arayüz -->
+        <div id="game-info">
+            <div class="info-item">
+                <span class="icon">🏆</span>
+                Seviye: <span id="level">1</span>
+            </div>
+            <div class="info-item">
+                <span class="icon">🌿</span>
+                Otlar: <span id="score">0</span> / <span id="target-score">5</span>
+            </div>
+            <div class="info-item">
+                <span class="icon">❤️</span>
+                Can: <span id="lives">3</span>
+            </div>
+        </div>
+
+        <!-- Başlangıç/Bitiş ekranı -->
+        <div id="ui-overlay" class="rounded-2xl">
+            <h1 id="main-message" class="text-4xl md:text-5xl font-extrabold text-blue-400 mb-4 animate-pulse">Kurban Bayramı Macerası</h1>
+            <p id="sub-message" class="text-lg md:text-xl text-gray-300 mb-8 max-w-sm">Kurban Bayramı'nda yakalanmadan uzay gemine yakıt toplaman gerekiyor! Her seviyede daha fazla ot ve daha hızlı düşmanlar seni bekliyor.</p>
+            <button id="start-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                Oyunu Başlat
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Canvas ve arayüz elemanlarını al
+        const canvas = document.getElementById('game-area');
+        const ctx = canvas.getContext('2d');
+        const uiOverlay = document.getElementById('ui-overlay');
+        const startButton = document.getElementById('start-button');
+        const mainMessage = document.getElementById('main-message');
+        const subMessage = document.getElementById('sub-message');
+        const levelDisplay = document.getElementById('level');
+        const scoreDisplay = document.getElementById('score');
+        const targetScoreDisplay = document.getElementById('target-score');
+        const livesDisplay = document.getElementById('lives');
+
+        // Sabitler ve oyun değişkenleri
+        const TARGET_SCORES = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63];
+        const MAX_LEVEL = TARGET_SCORES.length;
+        let currentLevel = 1;
+        let gameStarted = false;
+        let score = 0;
+        let lives = 3;
+
+        // Karakter ve nesne boyutları
+        const cowSize = 40;
+        const grassSize = 30;
+        const enemySize = 45;
+
+        // Oyuncu karakteri (İnek)
+        let cow = {
+            x: 0,
+            y: 0,
+            speed: 5
+        };
+
+        // Otlar
+        let grasses = [];
+
+        // Düşmanlar (İnsanlar)
+        let enemies = [];
+
+        // Klavye kontrolü için yeni değişkenler
+        let keys = {};
+        let mousePos = { x: 0, y: 0 };
+
+        // Çizim fonksiyonları
+        function drawCow() {
+            ctx.font = `${cowSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🐄', cow.x, cow.y);
+        }
+
+        function drawGrass() {
+            grasses.forEach(grass => {
+                ctx.font = `${grassSize}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🌿', grass.x, grass.y);
+            });
+        }
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                ctx.font = `${enemySize}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧑‍🌾', enemy.x, enemy.y);
+            });
+        }
+
+        // Oyun durumunu güncelle
+        function update() {
+            // Klavye ile hareket
+            let isMovingWithKeyboard = false;
+            if (keys['ArrowUp'] || keys['w']) { cow.y -= cow.speed; isMovingWithKeyboard = true; }
+            if (keys['ArrowDown'] || keys['s']) { cow.y += cow.speed; isMovingWithKeyboard = true; }
+            if (keys['ArrowLeft'] || keys['a']) { cow.x -= cow.speed; isMovingWithKeyboard = true; }
+            if (keys['ArrowRight'] || keys['d']) { cow.x += cow.speed; isMovingWithKeyboard = true; }
+
+            // Eğer klavye ile hareket edilmiyorsa, fare konumuna doğru hareket et
+            if (!isMovingWithKeyboard) {
+                const dx = mousePos.x - cow.x;
+                const dy = mousePos.y - cow.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > cow.speed) {
+                    cow.x += (dx / distance) * cow.speed;
+                    cow.y += (dy / distance) * cow.speed;
+                } else {
+                    cow.x = mousePos.x;
+                    cow.y = mousePos.y;
+                }
+            }
+            
+            // İneğin hareketini oyun alanı sınırları içinde tut
+            cow.x = Math.max(cowSize / 2, Math.min(canvas.width - cowSize / 2, cow.x));
+            cow.y = Math.max(cowSize / 2, Math.min(canvas.height - cowSize / 2, cow.y));
+
+            // Düşman hareketleri
+            enemies.forEach(enemy => {
+                const angle = Math.atan2(cow.y - enemy.y, cow.x - enemy.x);
+                enemy.x += Math.cos(angle) * enemy.speed;
+                enemy.y += Math.sin(angle) * enemy.speed;
+            });
+
+            // Çarpışma kontrolü (inek ve otlar)
+            grasses.forEach((grass, index) => {
+                if (isColliding(cow, grass, cowSize, grassSize)) {
+                    score++;
+                    scoreDisplay.textContent = score;
+                    grasses.splice(index, 1);
+                    spawnNewGrass();
+                    
+                    if (score >= TARGET_SCORES[currentLevel - 1]) {
+                        if (currentLevel < MAX_LEVEL) {
+                            levelComplete(); // Seviyeyi tamamla
+                        } else {
+                            endGame(true); // Oyunu kazan
+                        }
+                    }
+                }
+            });
+
+            // Çarpışma kontrolü (inek ve düşmanlar)
+            enemies.forEach(enemy => {
+                if (isColliding(cow, enemy, cowSize, enemySize)) {
+                    lives--;
+                    livesDisplay.textContent = lives;
+                    if (lives <= 0) {
+                        endGame(false); // Oyunu kaybet
+                    } else {
+                        resetCowPosition(); // Canı varsa pozisyonu sıfırla
+                    }
+                }
+            });
+        }
+
+        // Çarpışma kontrolü fonksiyonu
+        function isColliding(rect1, rect2, size1, size2) {
+            const distance = Math.sqrt(
+                Math.pow(rect1.x - rect2.x, 2) + Math.pow(rect1.y - rect2.y, 2)
+            );
+            return distance < (size1 / 2) + (size2 / 2);
+        }
+        
+        // Oyun döngüsü
+        function gameLoop() {
+            if (!gameStarted) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Ekranı temizle
+            
+            update();
+            drawGrass();
+            drawEnemies();
+            drawCow();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Ot oluşturma fonksiyonu
+        function spawnNewGrass() {
+            grasses.push({
+                x: Math.random() * (canvas.width - grassSize) + grassSize / 2,
+                y: Math.random() * (canvas.height - grassSize) + grassSize / 2,
+                width: grassSize,
+                height: grassSize
+            });
+        }
+
+        // Düşman oluşturma fonksiyonu
+        function spawnNewEnemy() {
+            const side = Math.floor(Math.random() * 4); // 0:üst, 1:sağ, 2:alt, 3:sol
+            let x, y;
+            if (side === 0) {
+                x = Math.random() * canvas.width;
+                y = -enemySize;
+            } else if (side === 1) {
+                x = canvas.width + enemySize;
+                y = Math.random() * canvas.height;
+            } else if (side === 2) {
+                x = Math.random() * canvas.width;
+                y = canvas.height + enemySize;
+            } else {
+                x = -enemySize;
+                y = Math.random() * canvas.height;
+            }
+            // Düşman hızı artış oranı daha dengeli olacak şekilde güncellendi
+            enemies.push({
+                x,
+                y,
+                speed: (1.5 + Math.random()) * (1 + (currentLevel - 1) * 0.05), // Her seviye için hızı %5 artır
+                width: enemySize,
+                height: enemySize
+            });
+        }
+
+        // Oyunun başlangıç ayarları
+        function setupGame() {
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            
+            updateUIForLevel();
+
+            cow.x = canvas.width / 2;
+            cow.y = canvas.height / 2;
+            mousePos.x = cow.x;
+            mousePos.y = cow.y;
+
+            grasses = [];
+            enemies = [];
+            
+            spawnInitialObjects();
+        }
+
+        function spawnInitialObjects() {
+            // Seviyeye göre düşman sayısı oluştur
+            const enemyCount = currentLevel;
+            for (let i = 0; i < enemyCount; i++) {
+                spawnNewEnemy();
+            }
+            // Otları başlangıçta yeniden oluştur
+            for (let i = 0; i < TARGET_SCORES[currentLevel - 1] / 2; i++) {
+                spawnNewGrass();
+            }
+        }
+        
+        // İneğin pozisyonunu sıfırlama (düşmanla çarpışınca)
+        function resetCowPosition() {
+            cow.x = canvas.width / 2;
+            cow.y = canvas.height / 2;
+            mousePos.x = cow.x;
+            mousePos.y = cow.y;
+            // Düşmanların da yerini değiştir, oyuncuya biraz soluklanma alanı ver
+            enemies.forEach(enemy => {
+                enemy.x = Math.random() * canvas.width;
+                enemy.y = Math.random() * canvas.height;
+            });
+        }
+
+        // Arayüzü seviyeye göre güncelle
+        function updateUIForLevel() {
+            levelDisplay.textContent = currentLevel;
+            scoreDisplay.textContent = score;
+            targetScoreDisplay.textContent = TARGET_SCORES[currentLevel - 1];
+            livesDisplay.textContent = lives;
+        }
+
+        // Seviye tamamlandığında
+        function levelComplete() {
+            gameStarted = false;
+            uiOverlay.classList.remove('hidden');
+            mainMessage.textContent = `Tebrikler, Seviye ${currentLevel} Tamamlandı!`;
+            subMessage.textContent = 'Sonraki seviyeye geçmek için hazır mısın?';
+            startButton.textContent = 'Sonraki Seviyeye Geç';
+            mainMessage.style.color = '#38a169'; // Yeşil renk
+            
+            startButton.removeEventListener('click', handleStartButtonClick);
+            startButton.addEventListener('click', handleNextLevelButtonClick);
+        }
+
+        // Oyunu bitir
+        function endGame(isWin) {
+            gameStarted = false;
+            uiOverlay.classList.remove('hidden');
+            if (isWin) {
+                mainMessage.textContent = 'Tebrikler, Kazandın!';
+                subMessage.textContent = 'Yeterli ot topladın ve Kurban Bayramı macerasını bitirdin!';
+                startButton.textContent = 'Tekrar Oyna';
+                mainMessage.style.color = '#38a169'; // Yeşil renk
+            } else {
+                mainMessage.textContent = 'Oyun Bitti!';
+                subMessage.textContent = 'İnsanlar seni yakaladı... Tekrar dene!';
+                startButton.textContent = 'Tekrar Dene';
+                mainMessage.style.color = '#e53e3e'; // Kırmızı renk
+            }
+
+            startButton.removeEventListener('click', handleNextLevelButtonClick);
+            startButton.addEventListener('click', handleStartButtonClick);
+        }
+
+        // Oyunu başlat butonu için olay dinleyici
+        function handleStartButtonClick() {
+            uiOverlay.classList.add('hidden');
+            setupGame();
+            gameStarted = true;
+            gameLoop();
+        }
+
+        // Sonraki seviyeye geç butonu için olay dinleyici
+        function handleNextLevelButtonClick() {
+            uiOverlay.classList.add('hidden');
+            currentLevel++;
+            score = 0;
+            updateUIForLevel();
+            cow.x = canvas.width / 2;
+            cow.y = canvas.height / 2;
+            mousePos.x = cow.x;
+            mousePos.y = cow.y;
+            
+            grasses = [];
+            enemies = [];
+            spawnInitialObjects();
+            gameStarted = true;
+            gameLoop();
+        }
+
+        // Fare hareketlerini dinle
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameStarted) return;
+            const rect = canvas.getBoundingClientRect();
+            // Farenin konumunu canvas'a göre ayarla
+            mousePos.x = e.clientX - rect.left;
+            mousePos.y = e.clientY - rect.top;
+        });
+
+        // Klavye tuş basışlarını dinle
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        
+        // Klavye tuş bırakışlarını dinle
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Oyunun ilk yüklenmesi
+        window.addEventListener('load', () => {
+            canvas.width = Math.min(document.body.clientWidth * 0.9, 1200);
+            canvas.height = Math.min(window.innerHeight * 0.8, 800);
+            // İneği merkeze sıfırla
+            cow.x = canvas.width / 2;
+            cow.y = canvas.height / 2;
+            // İlk başlangıç butonu olay dinleyicisini ekle
+            startButton.addEventListener('click', handleStartButtonClick);
+        });
+
+        // Pencere yeniden boyutlandığında canvas boyutunu ayarla
+        window.addEventListener('resize', () => {
+            canvas.width = Math.min(document.body.clientWidth * 0.9, 1200);
+            canvas.height = Math.min(window.innerHeight * 0.8, 800);
+            // İneği merkeze sıfırla
+            cow.x = canvas.width / 2;
+            cow.y = canvas.height / 2;
+        });
+
+    </script>
+</body>
+</html>
