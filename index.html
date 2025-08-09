@@ -1,479 +1,908 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kurban Bayramı Macerası</title>
-    <!-- Tailwind CSS CDN, sadece modern arayüz öğeleri için kullanılmıştır -->
+    <title>Lamumu: Sacrifice Day Dash</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0b0b1c;
-            color: #ffffff;
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a202c;
+            color: #e2e8f0;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            height: 100vh;
             margin: 0;
-            padding: 20px;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 1rem;
         }
-        
+        canvas {
+            background-color: #2d3748;
+            border: 2px solid #4a5568;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+            touch-action: none;
+            image-rendering: pixelated;
+            cursor: none; /* Hide default mouse cursor */
+        }
         #game-container {
             position: relative;
-            width: 90%; /* Oyun alanı genişletildi */
-            max-width: 1200px; /* Maksimum genişlik artırıldı */
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            width: 90vw;
+            max-width: 800px;
         }
-
-        #game-area {
-            background: #0d1628;
-            border: 4px solid #4a90e2;
-            border-radius: 16px;
-            box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
-            display: block;
-            margin: 0 auto;
+        #game-ui {
             width: 100%;
-            height: 100%;
-            cursor: none; /* Fare imlecini gizle */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: #2d3748;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
-
-        #ui-overlay {
+        #score-display, #level-display, #time-display {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        #score-display { color: #48bb78; }
+        #level-display { color: #63b3ed; }
+        #time-display { color: #f6ad55; }
+        #overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            flex-direction: column;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 16px;
-            z-index: 10;
-            transition: opacity 0.5s ease;
-        }
-
-        #ui-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        #game-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            background-color: #1a2a40;
             border-radius: 12px;
-            margin-top: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            flex-wrap: wrap;
+            z-index: 20;
+            padding: 20px;
         }
-
-        .info-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1.2rem;
-            color: #e0e0e0;
+        #overlay h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #48bb78;
         }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        #overlay p {
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            max-width: 80%;
         }
-
-        .info-item .icon {
-            font-size: 1.5rem;
+        #game-over-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 24px 32px;
+            border-radius: 12px;
+            z-index: 10;
         }
-
-        .info-item span {
+        #game-over-message h2 {
+            font-size: 2rem;
+            color: #e53e3e;
+            margin-bottom: 8px;
+        }
+        #game-over-message p {
+            font-size: 1rem;
+            margin-bottom: 24px;
+        }
+        #level-complete-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(72, 187, 120, 0.7);
+            color: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            z-index: 10;
+        }
+        #level-complete-message h2 {
+             font-size: 2rem;
+             margin-bottom: 16px;
+        }
+        .btn {
+            background-color: #48bb78;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 9999px;
             font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-family: 'Press Start 2P', cursive;
         }
-
+        .btn:hover {
+            background-color: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn:disabled {
+            background-color: #4a5568;
+            cursor: not-allowed;
+        }
+        #gemini-analysis-output, #gemini-lore-output {
+            margin-top: 16px;
+            max-width: 90%;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #cbd5e0;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .flex-col-gap-2 {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- Oyun alanı -->
-        <canvas id="game-area"></canvas>
-        
-        <!-- Oyun durumu, skor, vb. için arayüz -->
-        <div id="game-info">
-            <div class="info-item">
-                <span class="icon">🏆</span>
-                Seviye: <span id="level">1</span>
-            </div>
-            <div class="info-item">
-                <span class="icon">🌿</span>
-                Otlar: <span id="score">0</span> / <span id="target-score">5</span>
-            </div>
-            <div class="info-item">
-                <span class="icon">❤️</span>
-                Can: <span id="lives">3</span>
-            </div>
-        </div>
+<div id="game-container">
+    <div id="game-ui">
+        <span id="level-display">Level: 1</span>
+        <span id="score-display">Score: 0</span>
+        <span id="time-display">Time: 10</span>
+    </div>
+    <canvas id="game-canvas"></canvas>
 
-        <!-- Başlangıç/Bitiş ekranı -->
-        <div id="ui-overlay" class="rounded-2xl">
-            <h1 id="main-message" class="text-4xl md:text-5xl font-extrabold text-blue-400 mb-4 animate-pulse">Kurban Bayramı Macerası</h1>
-            <p id="sub-message" class="text-lg md:text-xl text-gray-300 mb-8 max-w-sm">Kurban Bayramı'nda yakalanmadan uzay gemine yakıt toplaman gerekiyor! Her seviyede daha fazla ot ve daha hızlı düşmanlar seni bekliyor.</p>
-            <button id="start-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
-                Oyunu Başlat
-            </button>
+    <div id="overlay">
+        <h1>Lamumu</h1>
+        <p id="overlay-text">Loading game assets...</p>
+        <div class="flex-col-gap-2">
+            <button id="start-game-btn" class="btn" disabled>Start</button>
+            <button id="gemini-lore-btn" class="btn" disabled>Lamumu's Story ✨</button>
         </div>
+        <p id="gemini-lore-output" class="hidden"></p>
     </div>
 
-    <script>
-        // Canvas ve arayüz elemanlarını al
-        const canvas = document.getElementById('game-area');
-        const ctx = canvas.getContext('2d');
-        const uiOverlay = document.getElementById('ui-overlay');
-        const startButton = document.getElementById('start-button');
-        const mainMessage = document.getElementById('main-message');
-        const subMessage = document.getElementById('sub-message');
-        const levelDisplay = document.getElementById('level');
-        const scoreDisplay = document.getElementById('score');
-        const targetScoreDisplay = document.getElementById('target-score');
-        const livesDisplay = document.getElementById('lives');
+    <div id="game-over-message" class="hidden">
+        <h2>Game Over!</h2>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <div class="flex-col-gap-2">
+            <button id="restart-game-over-btn" class="btn">Restart</button>
+            <button id="gemini-analysis-btn" class="btn">Analyze My Performance ✨</button>
+        </div>
+        <p id="gemini-analysis-output" class="hidden"></p>
+    </div>
+    
+    <div id="level-complete-message" class="hidden">
+        <h2>Level Complete!</h2>
+        <button id="next-level-btn" class="btn">Next Level</button>
+    </div>
+</div>
 
-        // Sabitler ve oyun değişkenleri
-        const TARGET_SCORES = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63];
-        const MAX_LEVEL = TARGET_SCORES.length;
-        let currentLevel = 1;
-        let gameStarted = false;
-        let score = 0;
-        let lives = 3;
+<script>
+    // Get canvas and context
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score-display');
+    const levelDisplay = document.getElementById('level-display');
+    const timeDisplay = document.getElementById('time-display');
+    const gameOverMessage = document.getElementById('game-over-message');
+    const finalScoreSpan = document.getElementById('final-score');
+    const restartGameOverBtn = document.getElementById('restart-game-over-btn');
+    const levelCompleteMessage = document.getElementById('level-complete-message');
+    const overlay = document.getElementById('overlay');
+    const overlayText = document.getElementById('overlay-text');
+    const startGameBtn = document.getElementById('start-game-btn');
 
-        // Karakter ve nesne boyutları
-        const cowSize = 40;
-        const grassSize = 30;
-        const enemySize = 45;
+    // New DOM elements for Gemini API
+    const geminiLoreBtn = document.getElementById('gemini-lore-btn');
+    const geminiLoreOutput = document.getElementById('gemini-lore-output');
+    const geminiAnalysisBtn = document.getElementById('gemini-analysis-btn');
+    const geminiAnalysisOutput = document.getElementById('gemini-analysis-output');
+    
+    // New Level button DOM element
+    const nextLevelBtn = document.getElementById('next-level-btn');
 
-        // Oyuncu karakteri (İnek)
-        let cow = {
-            x: 0,
-            y: 0,
-            speed: 5
+    // Initialize Web Audio API for sound
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioContext;
+
+    // Embed SVG images directly into the code
+    const cowSVG = new Image();
+    // New pixel art cow SVG
+    cowSVG.src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="12" y="10" width="8" height="12" fill="%23f7fafc" /><rect x="8" y="14" width="16" height="8" fill="%23f7fafc" /><rect x="12" y="14" width="4" height="4" fill="%232d3748" /><rect x="20" y="18" width="4" height="4" fill="%232d3748" /><rect x="8" y="16" width="4" height="4" fill="%232d3748" /><rect x="16" y="8" width="4" height="2" fill="%23f7fafc" /><rect x="10" y="6" width="2" height="2" fill="%23f7fafc" /><rect x="20" y="6" width="2" height="2" fill="%23f7fafc" /><rect x="14" y="10" width="2" height="2" fill="%231a202c" /><rect x="18" y="10" width="2" height="2" fill="%231a202c" /></svg>';
+    
+    const newCowSVG = new Image();
+    newCowSVG.src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="10" y="10" width="12" height="12" fill="white"/><rect x="8" y="12" width="16" height="8" fill="white"/><rect x="12" y="14" width="4" height="4" fill="%232d3748"/><rect x="18" y="14" width="4" height="4" fill="%232d3748"/><rect x="12" y="22" width="4" height="4" fill="%232d3748"/><rect x="16" y="24" width="4" height="2" fill="%232d3748"/><rect x="10" y="8" width="2" height="2" fill="white"/><rect x="20" y="8" width="2" height="2" fill="white"/><rect x="10" y="16" width="2" height="4" fill="%23e53e3e"/><rect x="20" y="16" width="2" height="4" fill="%23e53e3e"/><rect x="14" y="16" width="4" height="2" fill="%23e53e3e"/><rect x="10" y="20" width="2" height="2" fill="%23e53e3e"/><rect x="20" y="20" width="2" height="2" fill="%23e53e3e"/><rect x="12" y="26" width="8" height="2" fill="%232d3748"/><rect x="14" y="12" width="4" height="2" fill="pink"/><rect x="18" y="12" width="2" height="2" fill="pink"/><rect x="12" y="12" width="2" height="2" fill="pink"/></svg>';
+    
+    const butcherSVG = new Image();
+    butcherSVG.src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="12" y="12" width="8" height="16" fill="%23e53e3e" /><rect x="12" y="28" width="4" height="4" fill="%232d3748" /><rect x="16" y="28" width="4" height="4" fill="%232d3748" /><rect x="14" y="8" width="4" height="4" fill="%23f7fafc" /><rect x="20" y="16" width="8" height="2" fill="%23a0aec0" /><rect x="28" y="16" width="2" height="2" fill="%23a0aec0" /></svg>';
+
+    const invulnerabilitySVG = new Image();
+    invulnerabilitySVG.src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="0" y="0" width="24" height="24" rx="4" fill="%2348bb78" /><text x="12" y="12" font-family="Press Start 2P" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">i</text></svg>';
+    
+    const speedBoostSVG = new Image();
+    speedBoostSVG.src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="0" y="0" width="24" height="24" rx="4" fill="%2363b3ed" /><text x="12" y="12" font-family="Press Start 2P" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">&gt;</text></svg>';
+    
+    const slowdownSVG = new Image();
+    slowdownSVG.src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect x="0" y="0" width="24" height="24" rx="4" fill="%23f6e05e" /><text x="12" y="12" font-family="Press Start 2P" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">S</text></svg>';
+
+    // Game state variables
+    let isGameOver = false;
+    let isGameRunning = false;
+    let isLevelComplete = false; 
+    let score = 0;
+    let frame = 0;
+    let obstacles = [];
+    let obstacleSpawnRate = 120;
+    let obstacleSpeed = 2;
+    let baseObstacleSpeed = 2;
+    let homingObstacleChance = 1;
+    let zigzagObstacleChance = 0;
+    let powerUp = null;
+    let invulnerable = false;
+    let invulnerabilityTimer = 0;
+    let speedBoost = false;
+    let speedBoostTimer = 0;
+    let slowdownActive = false;
+    let slowdownTimer = 0;
+    const INVULNERABILITY_DURATION = 300;
+    const SPEED_BOOST_DURATION = 300;
+    const SLOWDOWN_DURATION = 300;
+    
+    // Level progression variables
+    let currentLevel = 1;
+    let levelSurvivalTime = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
+    let levelTimeElapsed = 0;
+    
+    // Power-up spawn variables
+    let powerUpSpawnRate = 600; 
+
+    // Control variables
+    const keysPressed = {};
+    let mouseX = 0;
+    let mouseY = 0;
+
+    // Functions for sound effects
+    function playGameOverSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.value = 50;
+        gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 1);
+    }
+    
+    function playPointSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.type = 'square';
+        oscillator.frequency.value = 440;
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+    }
+    
+    function playPowerUpSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 880;
+        gainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.2);
+    }
+    
+    function playLevelUpSound() {
+        if (!audioContext) return;
+        const oscillator1 = audioContext.createOscillator();
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator1.type = 'triangle';
+        oscillator1.frequency.value = 220;
+        oscillator1.connect(gainNode);
+        
+        oscillator2.type = 'square';
+        oscillator2.frequency.value = 440;
+        oscillator2.connect(gainNode);
+        
+        gainNode.connect(audioContext.destination);
+        
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+
+        oscillator1.start();
+        oscillator2.start();
+        oscillator1.stop(audioContext.currentTime + 0.5);
+        oscillator2.stop(audioContext.currentTime + 0.5);
+    }
+
+    // Cow object
+    let cow = {
+        x: 0,
+        y: 0,
+        size: 32,
+        baseSpeed: 5,
+        speed: 5,
+        dx: 0,
+        dy: 0,
+        draw() {
+            // Invulnerability aura
+            if (invulnerable && frame % 10 < 5) {
+                ctx.fillStyle = 'rgba(72, 187, 120, 0.5)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size / 2 + 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Speed boost aura
+            if (speedBoost && frame % 10 < 5) {
+                ctx.fillStyle = 'rgba(99, 179, 237, 0.5)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size / 2 + 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw the SVG image
+            ctx.drawImage(newCowSVG, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+        }
+    };
+
+    // Butcher object
+    function createObstacle() {
+        let x, y, dx, dy;
+        const side = Math.floor(Math.random() * 4);
+        
+        let type = 'homing';
+        const randomChance = Math.random();
+        if (randomChance < zigzagObstacleChance) {
+            type = 'zigzag';
+        } else if (randomChance < homingObstacleChance + zigzagObstacleChance) {
+            type = 'homing';
+        } else {
+            type = 'straight';
+        }
+
+        switch(type) {
+            case 'zigzag':
+                 if (side === 0 || side === 2) {
+                    x = Math.random() * canvas.width;
+                    y = side === 0 ? -40 : canvas.height + 40;
+                    dx = Math.random() > 0.5 ? obstacleSpeed : -obstacleSpeed;
+                    dy = side === 0 ? obstacleSpeed : -obstacleSpeed;
+                 } else {
+                    x = side === 1 ? canvas.width + 40 : -40;
+                    y = Math.random() * canvas.height;
+                    dx = side === 1 ? -obstacleSpeed : obstacleSpeed;
+                    dy = Math.random() > 0.5 ? obstacleSpeed : -obstacleSpeed;
+                 }
+                 break;
+            case 'straight':
+                switch(side) {
+                    case 0:
+                        x = Math.random() * canvas.width;
+                        y = -40;
+                        dx = 0;
+                        dy = obstacleSpeed;
+                        break;
+                    case 1:
+                        x = canvas.width + 40;
+                        y = Math.random() * canvas.height;
+                        dx = -obstacleSpeed;
+                        dy = 0;
+                        break;
+                    case 2:
+                        x = Math.random() * canvas.width;
+                        y = canvas.height + 40;
+                        dx = 0;
+                        dy = -obstacleSpeed;
+                        break;
+                    case 3:
+                        x = -40;
+                        y = Math.random() * canvas.height;
+                        dx = obstacleSpeed;
+                        dy = 0;
+                        break;
+                }
+                break;
+            default: // 'homing'
+                switch(side) {
+                    case 0:
+                        x = Math.random() * canvas.width;
+                        y = -40;
+                        dx = (cow.x - x) / 100 * obstacleSpeed;
+                        dy = obstacleSpeed;
+                        break;
+                    case 1:
+                        x = canvas.width + 40;
+                        y = Math.random() * canvas.height;
+                        dx = -obstacleSpeed;
+                        dy = (cow.y - y) / 100 * obstacleSpeed;
+                        break;
+                    case 2:
+                        x = Math.random() * canvas.width;
+                        y = canvas.height + 40;
+                        dx = (cow.x - x) / 100 * obstacleSpeed;
+                        dy = -obstacleSpeed;
+                        break;
+                    case 3:
+                        x = -40;
+                        y = Math.random() * canvas.height;
+                        dx = obstacleSpeed;
+                        dy = (cow.y - y) / 100 * obstacleSpeed;
+                        break;
+                }
+                break;
+        }
+
+        obstacles.push({
+            x,
+            y,
+            size: 32,
+            dx,
+            dy,
+            type,
+            zigzagCounter: 0,
+            draw() {
+                 ctx.drawImage(butcherSVG, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            }
+        });
+    }
+
+    // Create power-up object
+    function createPowerUp() {
+        if (powerUp) return;
+        
+        const types = ['invulnerability', 'speed', 'slowdown'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        
+        powerUp = {
+            x: Math.random() * (canvas.width - 40) + 20,
+            y: Math.random() * (canvas.height - 40) + 20,
+            size: 24,
+            type: type,
+            draw() {
+                let image;
+                if (this.type === 'invulnerability') {
+                    image = invulnerabilitySVG;
+                } else if (this.type === 'speed') {
+                    image = speedBoostSVG;
+                } else if (this.type === 'slowdown') {
+                    image = slowdownSVG;
+                }
+                ctx.drawImage(image, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            }
         };
-
-        // Otlar
-        let grasses = [];
-
-        // Düşmanlar (İnsanlar)
-        let enemies = [];
-
-        // Klavye kontrolü için yeni değişkenler
-        let keys = {};
-        let mousePos = { x: 0, y: 0 };
-
-        // Çizim fonksiyonları
-        function drawCow() {
-            ctx.font = `${cowSize}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🐄', cow.x, cow.y);
+    }
+    
+    // Function to start a new level
+    function startNewLevel() {
+        currentLevel++;
+        levelTimeElapsed = 0;
+        obstacles = [];
+        
+        // Increase enemy speed as the level progresses
+        baseObstacleSpeed += 0.3; // Düşman hızı artık daha kademeli artıyor.
+        obstacleSpeed = baseObstacleSpeed;
+        
+        // Increase obstacle spawn rate (more frequent enemies)
+        if (obstacleSpawnRate > 20) {
+            obstacleSpawnRate -= 10;
+        }
+        
+        // Decrease power-up spawn rate (less frequent power-ups)
+        if (powerUpSpawnRate < 2000) {
+            powerUpSpawnRate += 200;
+        }
+        
+        if (currentLevel >= 3) {
+            homingObstacleChance = 0.7;
+            zigzagObstacleChance = 0.3;
+        }
+        if (currentLevel >= 5) {
+            homingObstacleChance = 0.5;
+            zigzagObstacleChance = 0.5;
+        }
+        if (currentLevel >= 7) {
+            homingObstacleChance = 0.3;
+            zigzagObstacleChance = 0.7;
         }
 
-        function drawGrass() {
-            grasses.forEach(grass => {
-                ctx.font = `${grassSize}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🌿', grass.x, grass.y);
-            });
+        playLevelUpSound();
+        isLevelComplete = false;
+        levelCompleteMessage.classList.add('hidden');
+        requestAnimationFrame(update);
+    }
+
+    // Set canvas size and start the game
+    function init() {
+        if (!audioContext) {
+             audioContext = new AudioContext();
         }
 
-        function drawEnemies() {
-            enemies.forEach(enemy => {
-                ctx.font = `${enemySize}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🧑‍🌾', enemy.x, enemy.y);
-            });
+        canvas.width = Math.min(window.innerWidth * 0.9, 800);
+        canvas.height = Math.min(window.innerHeight * 0.7, 600);
+        
+        // Ensure perfect canvas dimensions for a retro style
+        canvas.width = Math.round(canvas.width / 4) * 4;
+        canvas.height = Math.round(canvas.height / 4) * 4;
+
+        cow.x = canvas.width / 2;
+        cow.y = canvas.height / 2;
+        cow.dx = 0;
+        cow.dy = 0;
+        cow.speed = cow.baseSpeed;
+
+        score = 0;
+        isGameOver = false;
+        isGameRunning = true;
+        isLevelComplete = false;
+        frame = 0;
+        obstacles = [];
+        
+        // --- Adjustments for a more gentle start ---
+        baseObstacleSpeed = 1; // Düşmanların başlangıç hızı azaltıldı.
+        obstacleSpeed = baseObstacleSpeed;
+        obstacleSpawnRate = 120; // Enemies spawn less frequently
+        powerUpSpawnRate = 600; // Power-ups spawn more frequently
+        // --- End of adjustments ---
+        
+        homingObstacleChance = 1;
+        zigzagObstacleChance = 0;
+        powerUp = null;
+        invulnerable = false;
+        invulnerabilityTimer = 0;
+        speedBoost = false;
+        speedBoostTimer = 0;
+        slowdownActive = false;
+        slowdownTimer = 0;
+        currentLevel = 1;
+        levelTimeElapsed = 0;
+        keysPressed['w'] = false;
+        keysPressed['a'] = false;
+        keysPressed['s'] = false;
+        keysPressed['d'] = false;
+        
+        mouseX = cow.x;
+        mouseY = cow.y;
+
+        // Hide overlay layers and messages
+        overlay.style.display = 'none';
+        gameOverMessage.classList.add('hidden');
+        levelCompleteMessage.classList.add('hidden');
+        geminiAnalysisOutput.classList.add('hidden');
+        geminiLoreOutput.classList.add('hidden');
+        geminiAnalysisBtn.disabled = false;
+        geminiLoreBtn.disabled = false;
+
+        requestAnimationFrame(update);
+    }
+    
+    // Update cow movement with keys
+    function updateCowDirectionWithKeys() {
+        let keyIsPressed = false;
+        cow.dx = 0;
+        cow.dy = 0;
+
+        if (keysPressed['a']) { cow.dx = -cow.speed; keyIsPressed = true; }
+        if (keysPressed['d']) { cow.dx = cow.speed; keyIsPressed = true; }
+        if (keysPressed['w']) { cow.dy = -cow.speed; keyIsPressed = true; }
+        if (keysPressed['s']) { cow.dy = cow.speed; keyIsPressed = true; }
+
+        return keyIsPressed;
+    }
+
+    function updateCowDirectionWithMouse() {
+        const dxToMouse = mouseX - cow.x;
+        const dyToMouse = mouseY - cow.y;
+        const distance = Math.sqrt(dxToMouse * dxToMouse + dyToMouse * dyToMouse);
+
+        if (distance > cow.speed) {
+            cow.dx = (dxToMouse / distance) * cow.speed;
+            cow.dy = (dyToMouse / distance) * cow.speed;
+        } else {
+            cow.dx = 0;
+            cow.dy = 0;
+        }
+    }
+
+    function moveCow() {
+        cow.x += cow.dx;
+        cow.y += cow.dy;
+
+        if (cow.x - cow.size/2 < 0) cow.x = cow.size/2;
+        if (cow.x + cow.size/2 > canvas.width) cow.x = canvas.width - cow.size/2;
+        if (cow.y - cow.size/2 < 0) cow.y = cow.size/2;
+        if (cow.y + cow.size/2 > canvas.height) cow.y = canvas.height - cow.size/2;
+    }
+
+    // Main game loop
+    function update() {
+        if (isGameOver || isLevelComplete || !isGameRunning) {
+            if (isGameOver) {
+                gameOverMessage.classList.remove('hidden');
+                finalScoreSpan.textContent = score;
+                playGameOverSound();
+            } else if (isLevelComplete) {
+                levelCompleteMessage.classList.remove('hidden');
+            }
+            return;
         }
 
-        // Oyun durumunu güncelle
-        function update() {
-            // Klavye ile hareket
-            let isMovingWithKeyboard = false;
-            if (keys['ArrowUp'] || keys['w']) { cow.y -= cow.speed; isMovingWithKeyboard = true; }
-            if (keys['ArrowDown'] || keys['s']) { cow.y += cow.speed; isMovingWithKeyboard = true; }
-            if (keys['ArrowLeft'] || keys['a']) { cow.x -= cow.speed; isMovingWithKeyboard = true; }
-            if (keys['ArrowRight'] || keys['d']) { cow.x += cow.speed; isMovingWithKeyboard = true; }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Eğer klavye ile hareket edilmiyorsa, fare konumuna doğru hareket et
-            if (!isMovingWithKeyboard) {
-                const dx = mousePos.x - cow.x;
-                const dy = mousePos.y - cow.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+        ctx.fillStyle = '#2d3748';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        for (let i = 0; i < canvas.width; i += 16) {
+            for (let j = 0; j < canvas.height; j += 16) {
+                ctx.fillRect(i, j, 4, 4);
+            }
+        }
+        
+        if (invulnerable) {
+            invulnerabilityTimer--;
+            if (invulnerabilityTimer <= 0) { invulnerable = false; }
+        }
+        
+        if (speedBoost) {
+            speedBoostTimer--;
+            if (speedBoostTimer <= 0) { speedBoost = false; cow.speed = cow.baseSpeed; }
+        }
+        
+        if (slowdownActive) {
+            slowdownTimer--;
+            if (slowdownTimer <= 0) { slowdownActive = false; obstacleSpeed = baseObstacleSpeed; }
+        }
+        
+        const keyIsPressed = updateCowDirectionWithKeys();
+        if (!keyIsPressed) {
+            updateCowDirectionWithMouse();
+        }
+        
+        moveCow();
+        cow.draw();
 
-                if (distance > cow.speed) {
-                    cow.x += (dx / distance) * cow.speed;
-                    cow.y += (dy / distance) * cow.speed;
+        if (frame % obstacleSpawnRate === 0) { createObstacle(); }
+        if (powerUp === null && frame % powerUpSpawnRate === 0) { createPowerUp(); }
+
+        if (powerUp) {
+            powerUp.draw();
+            const dist = Math.sqrt(Math.pow(cow.x - powerUp.x, 2) + Math.pow(cow.y - powerUp.y, 2));
+            if (dist < cow.size/2 + powerUp.size/2) {
+                playPowerUpSound();
+                if (powerUp.type === 'invulnerability') {
+                    score += 50; invulnerable = true; invulnerabilityTimer = INVULNERABILITY_DURATION;
+                } else if (powerUp.type === 'speed') {
+                    score += 25; speedBoost = true; speedBoostTimer = SPEED_BOOST_DURATION; cow.speed = cow.baseSpeed * 1.5;
+                } else if (powerUp.type === 'slowdown') {
+                    score += 25; slowdownActive = true; slowdownTimer = SLOWDOWN_DURATION; obstacleSpeed = baseObstacleSpeed * 0.5;
+                }
+                powerUp = null;
+            }
+        }
+
+        obstacles.forEach((obstacle, index) => {
+            if (obstacle.type === 'zigzag') {
+                obstacle.zigzagCounter++;
+                if (obstacle.zigzagCounter % 60 === 0) {
+                    obstacle.dx = -obstacle.dx;
+                    obstacle.dy = -obstacle.dy;
+                }
+            }
+            
+            const effectiveSpeed = slowdownActive ? obstacleSpeed * 0.5 : obstacleSpeed;
+            if (obstacle.type === 'homing') {
+                const dxToCow = cow.x - obstacle.x;
+                const dyToCow = cow.y - obstacle.y;
+                const distance = Math.sqrt(dxToCow * dxToCow + dyToCow * dyToCow);
+                obstacle.dx = (dxToCow / distance) * effectiveSpeed;
+                obstacle.dy = (dyToCow / distance) * effectiveSpeed;
+            } else {
+                const currentMagnitude = Math.sqrt(obstacle.dx * obstacle.dx + obstacle.dy * obstacle.dy);
+                if (currentMagnitude !== 0) {
+                    const ratio = effectiveSpeed / currentMagnitude;
+                    obstacle.dx *= ratio;
+                    obstacle.dy *= ratio;
+                }
+            }
+            
+            obstacle.x += obstacle.dx;
+            obstacle.y += obstacle.dy;
+            obstacle.draw();
+
+            const dist = Math.sqrt(Math.pow(cow.x - obstacle.x, 2) + Math.pow(cow.y - obstacle.y, 2));
+            if (dist < cow.size/2 + obstacle.size/2 - 5) {
+                if (invulnerable) {
+                    playPointSound();
+                    obstacles.splice(index, 1);
                 } else {
-                    cow.x = mousePos.x;
-                    cow.y = mousePos.y;
+                    isGameOver = true;
                 }
             }
-            
-            // İneğin hareketini oyun alanı sınırları içinde tut
-            cow.x = Math.max(cowSize / 2, Math.min(canvas.width - cowSize / 2, cow.x));
-            cow.y = Math.max(cowSize / 2, Math.min(canvas.height - cowSize / 2, cow.y));
+        });
 
-            // Düşman hareketleri
-            enemies.forEach(enemy => {
-                const angle = Math.atan2(cow.y - enemy.y, cow.x - enemy.x);
-                enemy.x += Math.cos(angle) * enemy.speed;
-                enemy.y += Math.sin(angle) * enemy.speed;
-            });
-
-            // Çarpışma kontrolü (inek ve otlar)
-            grasses.forEach((grass, index) => {
-                if (isColliding(cow, grass, cowSize, grassSize)) {
-                    score++;
-                    scoreDisplay.textContent = score;
-                    grasses.splice(index, 1);
-                    spawnNewGrass();
-                    
-                    if (score >= TARGET_SCORES[currentLevel - 1]) {
-                        if (currentLevel < MAX_LEVEL) {
-                            levelComplete(); // Seviyeyi tamamla
-                        } else {
-                            endGame(true); // Oyunu kazan
-                        }
-                    }
-                }
-            });
-
-            // Çarpışma kontrolü (inek ve düşmanlar)
-            enemies.forEach(enemy => {
-                if (isColliding(cow, enemy, cowSize, enemySize)) {
-                    lives--;
-                    livesDisplay.textContent = lives;
-                    if (lives <= 0) {
-                        endGame(false); // Oyunu kaybet
-                    } else {
-                        resetCowPosition(); // Canı varsa pozisyonu sıfırla
-                    }
-                }
-            });
+        levelTimeElapsed++;
+        const requiredTime = levelSurvivalTime[currentLevel - 1] * 60;
+        if (levelTimeElapsed >= requiredTime && currentLevel < levelSurvivalTime.length) {
+            score += 100;
+            isLevelComplete = true;
+            playLevelUpSound();
+        } else if (levelTimeElapsed >= requiredTime && currentLevel >= levelSurvivalTime.length) {
+            isGameOver = true;
         }
 
-        // Çarpışma kontrolü fonksiyonu
-        function isColliding(rect1, rect2, size1, size2) {
-            const distance = Math.sqrt(
-                Math.pow(rect1.x - rect2.x, 2) + Math.pow(rect1.y - rect2.y, 2)
-            );
-            return distance < (size1 / 2) + (size2 / 2);
+        scoreDisplay.textContent = `Score: ${score}`;
+        levelDisplay.textContent = `Level: ${currentLevel}`;
+        const timeRemaining = Math.max(0, Math.floor((requiredTime - levelTimeElapsed) / 60));
+        timeDisplay.textContent = `Time: ${timeRemaining}`;
+        
+        frame++;
+
+        requestAnimationFrame(update);
+    }
+
+    // Helper function for Gemini API calls
+    async function callGemini(prompt, retries = 3, delay = 1000) {
+      const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+      const payload = { contents: chatHistory };
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          if (response.status === 429 && retries > 0) {
+            await new Promise(res => setTimeout(res, delay));
+            return callGemini(prompt, retries - 1, delay * 2);
+          }
+          throw new Error(`API error: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+          return result.candidates[0].content.parts[0].text;
+        } else {
+          throw new Error('Unexpected response structure');
+        }
+      } catch (error) {
+        console.error('Gemini API call failed:', error);
+        return null;
+      }
+    }
+
+    // Function to generate Lamumu's story
+    async function getLore() {
+        geminiLoreBtn.disabled = true;
+        geminiLoreOutput.classList.remove('hidden');
+        geminiLoreOutput.textContent = 'Loading story...';
+        
+        const prompt = "Write a short, quirky, and slightly sad story about a cow named Lamumu who is on the run to survive on Sacrifice Day. Keep it under 100 words.";
+        const loreText = await callGemini(prompt);
+        
+        if (loreText) {
+            geminiLoreOutput.textContent = loreText;
+        } else {
+            geminiLoreOutput.textContent = 'Could not generate story. Please try again.';
         }
         
-        // Oyun döngüsü
-        function gameLoop() {
-            if (!gameStarted) return;
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Ekranı temizle
-            
-            update();
-            drawGrass();
-            drawEnemies();
-            drawCow();
+        geminiLoreBtn.disabled = false;
+    }
 
-            requestAnimationFrame(gameLoop);
+    // Function to generate performance analysis
+    async function getAnalysis() {
+        geminiAnalysisBtn.disabled = true;
+        geminiAnalysisOutput.classList.remove('hidden');
+        geminiAnalysisOutput.textContent = 'Loading analysis...';
+        
+        const prompt = `You are an intelligent, slightly sarcastic game host. Analyze a player's performance in the game 'Lamumu: Sacrifice Day Dash'. The player's final score is ${score} and they reached level ${currentLevel}. State that the goal is to escape the butchers. Provide a short and humorous analysis in English, under 50 words.`;
+        const analysisText = await callGemini(prompt);
+        
+        if (analysisText) {
+            geminiAnalysisOutput.textContent = analysisText;
+        } else {
+            geminiAnalysisOutput.textContent = 'Could not generate analysis. Please try again.';
         }
+        
+        geminiAnalysisBtn.disabled = false;
+    }
 
-        // Ot oluşturma fonksiyonu
-        function spawnNewGrass() {
-            grasses.push({
-                x: Math.random() * (canvas.width - grassSize) + grassSize / 2,
-                y: Math.random() * (canvas.height - grassSize) + grassSize / 2,
-                width: grassSize,
-                height: grassSize
-            });
+    // Keyboard events
+    document.addEventListener('keydown', (e) => { if (!isGameOver && !isLevelComplete && isGameRunning) keysPressed[e.key.toLowerCase()] = true; });
+    document.addEventListener('keyup', (e) => { if (!isGameOver && !isLevelComplete && isGameRunning) keysPressed[e.key.toLowerCase()] = false; });
+    
+    // Mouse events
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        canvas.width = Math.min(window.innerWidth * 0.9, 800);
+        canvas.height = Math.min(window.innerHeight * 0.7, 600);
+        canvas.width = Math.round(canvas.width / 4) * 4;
+        canvas.height = Math.round(canvas.height / 4) * 4;
+
+        // Wait for all SVGs to load
+        const imagesToLoad = [cowSVG, butcherSVG, invulnerabilitySVG, speedBoostSVG, slowdownSVG];
+        let loadedCount = 0;
+        
+        function checkImageLoading() {
+            if (loadedCount === imagesToLoad.length) {
+                overlayText.textContent = 'Escape the butchers and try to survive. Use your mouse or WASD keys to move. Collect power-ups to increase your chances of survival!';
+                startGameBtn.disabled = false;
+                geminiLoreBtn.disabled = false;
+
+                startGameBtn.addEventListener('click', init);
+                restartGameOverBtn.addEventListener('click', init);
+                geminiLoreBtn.addEventListener('click', getLore);
+                geminiAnalysisBtn.addEventListener('click', getAnalysis);
+                nextLevelBtn.addEventListener('click', startNewLevel);
+            }
         }
-
-        // Düşman oluşturma fonksiyonu
-        function spawnNewEnemy() {
-            const side = Math.floor(Math.random() * 4); // 0:üst, 1:sağ, 2:alt, 3:sol
-            let x, y;
-            if (side === 0) {
-                x = Math.random() * canvas.width;
-                y = -enemySize;
-            } else if (side === 1) {
-                x = canvas.width + enemySize;
-                y = Math.random() * canvas.height;
-            } else if (side === 2) {
-                x = Math.random() * canvas.width;
-                y = canvas.height + enemySize;
+        
+        imagesToLoad.forEach(img => {
+            if (img.complete) {
+                loadedCount++;
             } else {
-                x = -enemySize;
-                y = Math.random() * canvas.height;
+                img.onload = () => {
+                    loadedCount++;
+                    checkImageLoading();
+                };
+                img.onerror = () => {
+                    console.error("Image loading error.");
+                    loadedCount++;
+                    checkImageLoading();
+                };
             }
-            // Düşman hızı artış oranı daha dengeli olacak şekilde güncellendi
-            enemies.push({
-                x,
-                y,
-                speed: (1.5 + Math.random()) * (1 + (currentLevel - 1) * 0.05), // Her seviye için hızı %5 artır
-                width: enemySize,
-                height: enemySize
-            });
-        }
-
-        // Oyunun başlangıç ayarları
-        function setupGame() {
-            score = 0;
-            lives = 3;
-            currentLevel = 1;
-            
-            updateUIForLevel();
-
-            cow.x = canvas.width / 2;
-            cow.y = canvas.height / 2;
-            mousePos.x = cow.x;
-            mousePos.y = cow.y;
-
-            grasses = [];
-            enemies = [];
-            
-            spawnInitialObjects();
-        }
-
-        function spawnInitialObjects() {
-            // Seviyeye göre düşman sayısı oluştur
-            const enemyCount = currentLevel;
-            for (let i = 0; i < enemyCount; i++) {
-                spawnNewEnemy();
-            }
-            // Otları başlangıçta yeniden oluştur
-            for (let i = 0; i < TARGET_SCORES[currentLevel - 1] / 2; i++) {
-                spawnNewGrass();
-            }
-        }
-        
-        // İneğin pozisyonunu sıfırlama (düşmanla çarpışınca)
-        function resetCowPosition() {
-            cow.x = canvas.width / 2;
-            cow.y = canvas.height / 2;
-            mousePos.x = cow.x;
-            mousePos.y = cow.y;
-            // Düşmanların da yerini değiştir, oyuncuya biraz soluklanma alanı ver
-            enemies.forEach(enemy => {
-                enemy.x = Math.random() * canvas.width;
-                enemy.y = Math.random() * canvas.height;
-            });
-        }
-
-        // Arayüzü seviyeye göre güncelle
-        function updateUIForLevel() {
-            levelDisplay.textContent = currentLevel;
-            scoreDisplay.textContent = score;
-            targetScoreDisplay.textContent = TARGET_SCORES[currentLevel - 1];
-            livesDisplay.textContent = lives;
-        }
-
-        // Seviye tamamlandığında
-        function levelComplete() {
-            gameStarted = false;
-            uiOverlay.classList.remove('hidden');
-            mainMessage.textContent = `Tebrikler, Seviye ${currentLevel} Tamamlandı!`;
-            subMessage.textContent = 'Sonraki seviyeye geçmek için hazır mısın?';
-            startButton.textContent = 'Sonraki Seviyeye Geç';
-            mainMessage.style.color = '#38a169'; // Yeşil renk
-            
-            startButton.removeEventListener('click', handleStartButtonClick);
-            startButton.addEventListener('click', handleNextLevelButtonClick);
-        }
-
-        // Oyunu bitir
-        function endGame(isWin) {
-            gameStarted = false;
-            uiOverlay.classList.remove('hidden');
-            if (isWin) {
-                mainMessage.textContent = 'Tebrikler, Kazandın!';
-                subMessage.textContent = 'Yeterli ot topladın ve Kurban Bayramı macerasını bitirdin!';
-                startButton.textContent = 'Tekrar Oyna';
-                mainMessage.style.color = '#38a169'; // Yeşil renk
-            } else {
-                mainMessage.textContent = 'Oyun Bitti!';
-                subMessage.textContent = 'İnsanlar seni yakaladı... Tekrar dene!';
-                startButton.textContent = 'Tekrar Dene';
-                mainMessage.style.color = '#e53e3e'; // Kırmızı renk
-            }
-
-            startButton.removeEventListener('click', handleNextLevelButtonClick);
-            startButton.addEventListener('click', handleStartButtonClick);
-        }
-
-        // Oyunu başlat butonu için olay dinleyici
-        function handleStartButtonClick() {
-            uiOverlay.classList.add('hidden');
-            setupGame();
-            gameStarted = true;
-            gameLoop();
-        }
-
-        // Sonraki seviyeye geç butonu için olay dinleyici
-        function handleNextLevelButtonClick() {
-            uiOverlay.classList.add('hidden');
-            currentLevel++;
-            score = 0;
-            updateUIForLevel();
-            cow.x = canvas.width / 2;
-            cow.y = canvas.height / 2;
-            mousePos.x = cow.x;
-            mousePos.y = cow.y;
-            
-            grasses = [];
-            enemies = [];
-            spawnInitialObjects();
-            gameStarted = true;
-            gameLoop();
-        }
-
-        // Fare hareketlerini dinle
-        canvas.addEventListener('mousemove', (e) => {
-            if (!gameStarted) return;
-            const rect = canvas.getBoundingClientRect();
-            // Farenin konumunu canvas'a göre ayarla
-            mousePos.x = e.clientX - rect.left;
-            mousePos.y = e.clientY - rect.top;
         });
 
-        // Klavye tuş basışlarını dinle
-        window.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-        });
-        
-        // Klavye tuş bırakışlarını dinle
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
+        checkImageLoading();
+    });
+    
+    // Manage size on window resize
+    window.addEventListener('resize', () => {
+        if (!isGameRunning) {
+            canvas.width = Math.min(window.innerWidth * 0.9, 800);
+            canvas.height = Math.min(window.innerHeight * 0.7, 600);
+            canvas.width = Math.round(canvas.width / 4) * 4;
+            canvas.height = Math.round(canvas.height / 4) * 4;
+        }
+    });
 
-        // Oyunun ilk yüklenmesi
-        window.addEventListener('load', () => {
-            canvas.width = Math.min(document.body.clientWidth * 0.9, 1200);
-            canvas.height = Math.min(window.innerHeight * 0.8, 800);
-            // İneği merkeze sıfırla
-            cow.x = canvas.width / 2;
-            cow.y = canvas.height / 2;
-            // İlk başlangıç butonu olay dinleyicisini ekle
-            startButton.addEventListener('click', handleStartButtonClick);
-        });
+</script>
 
-        // Pencere yeniden boyutlandığında canvas boyutunu ayarla
-        window.addEventListener('resize', () => {
-            canvas.width = Math.min(document.body.clientWidth * 0.9, 1200);
-            canvas.height = Math.min(window.innerHeight * 0.8, 800);
-            // İneği merkeze sıfırla
-            cow.x = canvas.width / 2;
-            cow.y = canvas.height / 2;
-        });
-
-    </script>
 </body>
 </html>
